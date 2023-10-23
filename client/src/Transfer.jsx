@@ -1,54 +1,83 @@
-import { useState } from "react";
+import {useState} from "react";
 import server from "./server";
 
-function Transfer({ address, setBalance }) {
-  const [sendAmount, setSendAmount] = useState("");
-  const [recipient, setRecipient] = useState("");
+function Transfer({address, setBalance}) {
+    const [sendAmount, setSendAmount] = useState("");
+    const [recipient, setRecipient] = useState("");
+    const [challenge, setChallenge] = useState("");
+    const [inputSignature, setInputSignature] = useState("");
 
-  const setValue = (setter) => (evt) => setter(evt.target.value);
+    const setValue = (setter) => (evt) => setter(evt.target.value);
 
-  async function transfer(evt) {
-    evt.preventDefault();
-
-    try {
-      const {
-        data: { balance },
-      } = await server.post(`send`, {
-        sender: address,
-        amount: parseInt(sendAmount),
-        recipient,
-      });
-      setBalance(balance);
-    } catch (ex) {
-      alert(ex.response.data.message);
+    async function fetchChallenge() {
+        try {
+            const {data} = await server.get(`/createChallenge/${address}`);
+            setChallenge(JSON.stringify(data));
+        } catch (ex) {
+            alert(ex.response.data.message);
+        }
     }
-  }
 
-  return (
-    <form className="container transfer" onSubmit={transfer}>
-      <h1>Send Transaction</h1>
+    async function transfer(evt) {
+        evt.preventDefault();
 
-      <label>
-        Send Amount
-        <input
-          placeholder="1, 2, 3..."
-          value={sendAmount}
-          onChange={setValue(setSendAmount)}
-        ></input>
-      </label>
+        try {
+            const {
+                data: {balance},
+            } = await server.post(`send`, {
+                sender: address,
+                recipient: recipient,
+                amount: parseInt(sendAmount),
+                challenge: JSON.parse(challenge),
+                signature: JSON.parse(inputSignature)
+            });
+            setBalance(balance);
+        } catch (ex) {
+            alert(ex.response.data.message);
+        }
+    }
 
-      <label>
-        Recipient
-        <input
-          placeholder="Type an address, for example: 0x2"
-          value={recipient}
-          onChange={setValue(setRecipient)}
-        ></input>
-      </label>
+    return (
+        <form className="container transfer" onSubmit={transfer}>
+            <h1>Send Transaction</h1>
 
-      <input type="submit" className="button" value="Transfer" />
-    </form>
-  );
+            <label>
+                Send Amount
+                <input
+                    placeholder="1, 2, 3..."
+                    value={sendAmount}
+                    onChange={setValue(setSendAmount)}
+                ></input>
+            </label>
+
+            <label>
+                Recipient
+                <input
+                    placeholder="Type an address, for example: 0x2"
+                    value={recipient}
+                    onChange={setValue(setRecipient)}
+                ></input>
+            </label>
+
+            <button type="button" onClick={fetchChallenge}>Fetch Challenge</button>
+
+            <label>
+                Challenge
+                <span>{challenge}</span>
+            </label>
+
+            <label>
+                Signature
+                <input
+                    placeholder="Use sign.js to sign the challenge."
+                    value={inputSignature}
+                    onChange={setValue(setInputSignature)}
+                ></input>
+            </label>
+
+            <input type="submit" className="button" value="Transfer"/>
+        </form>
+    );
 }
 
 export default Transfer;
